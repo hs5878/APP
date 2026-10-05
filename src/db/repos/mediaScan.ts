@@ -68,6 +68,39 @@ export async function setStates(
   }
 }
 
+export async function getRowsByIds(db: Db, assetIds: readonly string[]): Promise<MediaScanRow[]> {
+  const out: MediaScanRow[] = [];
+  for (let i = 0; i < assetIds.length; i += 500) {
+    out.push(
+      ...(await db
+        .select()
+        .from(mediaScan)
+        .where(inArray(mediaScan.assetId, assetIds.slice(i, i + 500)))),
+    );
+  }
+  return out;
+}
+
+/** `from` 상태인 사진만 `to`로 바꾼다. 이미 카드에 들어갔거나 건너뛴 사진 상태를 덮지 않으려고 쓴다. */
+export async function transitionStates(
+  db: Db,
+  assetIds: readonly string[],
+  from: readonly MediaScanState[],
+  to: MediaScanState,
+): Promise<void> {
+  for (let i = 0; i < assetIds.length; i += 400) {
+    await db
+      .update(mediaScan)
+      .set({ state: to })
+      .where(
+        and(
+          inArray(mediaScan.assetId, assetIds.slice(i, i + 400)),
+          inArray(mediaScan.state, [...from]),
+        ),
+      );
+  }
+}
+
 export async function countByState(db: Db): Promise<Record<MediaScanState, number>> {
   const rows = await db
     .select({ state: mediaScan.state, n: sql<number>`count(*)` })

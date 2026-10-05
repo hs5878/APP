@@ -1,12 +1,15 @@
-import { ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { buildHomeSummary } from '@/domain/homeSummary';
 import { useAnniversaries } from '@/features/anniversaries/useAnniversaries';
+import { usePendingCandidateCount } from '@/features/photos/useCandidates';
 import { useSpace } from '@/features/space/SpaceProvider';
 import { todayYmd } from '@/features/space/today';
 
 export default function HomeScreen() {
   const { space } = useSpace();
   const { rows: anniversaries } = useAnniversaries();
+  const pending = usePendingCandidateCount();
   const dark = useColorScheme() === 'dark';
   if (!space) return null;
   const fg = dark ? '#fff' : '#111';
@@ -33,11 +36,17 @@ export default function HomeScreen() {
         <Text style={[styles.boxSub, { color: sub }]}>{next.date}</Text>
       </View>
 
-      {/* 후보 배지 자리(사진 후보 기능에서 연결) */}
-      <View style={[styles.box, { backgroundColor: card }]}>
+      <Pressable
+        accessibilityRole="button"
+        disabled={pending === 0}
+        onPress={() => router.push('/records/candidates')}
+        style={[styles.box, { backgroundColor: card }]}
+      >
         <Text style={[styles.boxLabel, { color: sub }]}>새 기록 후보</Text>
-        <Text style={[styles.boxSub, { color: sub }]}>아직 없어요</Text>
-      </View>
+        <Text style={[styles.boxSub, { color: pending > 0 ? fg : sub }]}>
+          {pending > 0 ? `데이트 후보 ${pending}개 · 확인하기` : '아직 없어요'}
+        </Text>
+      </Pressable>
 
       {/* 최근 카드 3개 자리(기록 기능에서 연결) */}
       <Text style={[styles.section, { color: fg }]}>최근 기록</Text>
