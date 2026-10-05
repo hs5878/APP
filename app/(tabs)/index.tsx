@@ -1,16 +1,18 @@
 import { ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { buildHomeSummary } from '@/domain/homeSummary';
+import { useAnniversaries } from '@/features/anniversaries/useAnniversaries';
 import { useSpace } from '@/features/space/SpaceProvider';
 import { todayYmd } from '@/features/space/today';
 
 export default function HomeScreen() {
   const { space } = useSpace();
+  const { rows: anniversaries } = useAnniversaries();
   const dark = useColorScheme() === 'dark';
   if (!space) return null;
   const fg = dark ? '#fff' : '#111';
   const sub = dark ? '#aaa' : '#666';
   const card = dark ? '#1a1a1a' : '#f5f5f5';
-  const summary = buildHomeSummary(space.startedOn, todayYmd());
+  const summary = buildHomeSummary(space.startedOn, todayYmd(), anniversaries);
   const { next } = summary;
 
   return (

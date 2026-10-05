@@ -5,15 +5,16 @@ interface Props {
   value: string;
   onChange(value: string): void;
   error?: string | null;
+  label?: string;
 }
 
 /** YYYY-MM-DD 입력칸. 숫자만 치면 하이픈을 넣어 준다. */
-export function DateField({ value, onChange, error }: Props) {
+export function DateField({ value, onChange, error, label = '사귄 날' }: Props) {
   const dark = useColorScheme() === 'dark';
   return (
     <View>
       <TextInput
-        accessibilityLabel="사귄 날"
+        accessibilityLabel={label}
         value={value}
         onChangeText={(t) => onChange(formatYmdInput(t))}
         keyboardType="number-pad"
