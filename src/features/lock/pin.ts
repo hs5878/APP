@@ -27,15 +27,31 @@ export function isValidPin(pin: string): boolean {
   return PIN_PATTERN.test(pin);
 }
 
-// 실패 횟수는 메모리에만 둔다. 앱을 다시 켜면 초기화된다(영속화는 DATA_MODEL의 kv 키 확정 후).
-let lockState: LockState = initialLockState;
+// 실패 상태도 SecureStore에 둬서 앱을 다시 켜도 대기가 이어진다(DB 모듈을 쓰지 않는다).
+export const PIN_LOCK_KEY = 'pin.lock';
 
-export function getLockState(): LockState {
-  return lockState;
+export async function getLockState(): Promise<LockState> {
+  const raw = await getSecret(PIN_LOCK_KEY);
+  if (!raw) return initialLockState;
+  try {
+    const v: unknown = JSON.parse(raw);
+    if (typeof v !== 'object' || v === null) return initialLockState;
+    const { failures, lockedUntil } = v as Record<string, unknown>;
+    if (
+      typeof failures !== 'number' ||
+      !(lockedUntil === null || typeof lockedUntil === 'number')
+    ) {
+      return initialLockState;
+    }
+    return { failures, lockedUntil };
+  } catch {
+    return initialLockState;
+  }
 }
 
-export function resetLockState(): void {
-  lockState = initialLockState;
+async function saveLockState(state: LockState): Promise<void> {
+  if (state === initialLockState) await deleteSecret(PIN_LOCK_KEY);
+  else await setSecret(PIN_LOCK_KEY, JSON.stringify(state));
 }
 
 async function derive(pin: string, salt: Uint8Array): Promise<Uint8Array> {
@@ -57,21 +73,22 @@ export async function setPin(pin: string): Promise<void> {
   const salt = s.randombytes_buf(s.crypto_pwhash_SALTBYTES);
   const hash = await derive(pin, salt);
   await setSecret(PIN_HASH_KEY, `${FORMAT}$${s.to_base64(salt)}$${s.to_base64(hash)}`);
-  lockState = recordSuccess();
+  await saveLockState(recordSuccess());
 }
 
 export async function hasPin(): Promise<boolean> {
   return (await getSecret(PIN_HASH_KEY)) !== null;
 }
 
-export function clearPin(): Promise<void> {
-  lockState = recordSuccess();
-  return deleteSecret(PIN_HASH_KEY);
+export async function clearPin(): Promise<void> {
+  await deleteSecret(PIN_HASH_KEY);
+  await saveLockState(recordSuccess());
 }
 
 export async function verifyPin(pin: string, now: number = Date.now()): Promise<VerifyResult> {
-  if (!canAttempt(lockState, now)) {
-    return { ok: false, reason: 'locked', retryAfterMs: remainingLockMs(lockState, now) };
+  const state = await getLockState();
+  if (!canAttempt(state, now)) {
+    return { ok: false, reason: 'locked', retryAfterMs: remainingLockMs(state, now) };
   }
   const stored = await getSecret(PIN_HASH_KEY);
   if (stored === null) return { ok: false, reason: 'not-set' };
@@ -85,12 +102,13 @@ export async function verifyPin(pin: string, now: number = Date.now()): Promise<
   const match = isValidPin(pin) && s.memcmp(await derive(pin, s.from_base64(saltB64)), expected);
 
   if (match) {
-    lockState = recordSuccess();
+    await saveLockState(recordSuccess());
     return { ok: true };
   }
-  lockState = recordFailure(lockState, now);
-  if (!canAttempt(lockState, now)) {
-    return { ok: false, reason: 'locked', retryAfterMs: remainingLockMs(lockState, now) };
+  const next = recordFailure(state, now);
+  await saveLockState(next);
+  if (!canAttempt(next, now)) {
+    return { ok: false, reason: 'locked', retryAfterMs: remainingLockMs(next, now) };
   }
-  return { ok: false, reason: 'wrong', remainingFailures: MAX_FAILURES - lockState.failures };
+  return { ok: false, reason: 'wrong', remainingFailures: MAX_FAILURES - next.failures };
 }

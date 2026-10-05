@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import * as SecureStore from 'expo-secure-store';
 import { LOCKOUT_MS } from '@/domain/lockState';
-import { PIN_HASH_KEY, resetLockState, setPin, verifyPin } from './pin';
+import { PIN_HASH_KEY, PIN_LOCK_KEY, setPin, verifyPin } from './pin';
 
 const mockStore = new Map<string, string>();
 
@@ -22,7 +22,6 @@ jest.mock('react-native-libsodium', () => ({
 describe('PIN', () => {
   beforeEach(() => {
     mockStore.clear();
-    resetLockState();
     jest.clearAllMocks();
   });
 
@@ -54,6 +53,15 @@ describe('PIN', () => {
       reason: 'locked',
     });
     expect(await verifyPin('123456', 1000 + LOCKOUT_MS)).toEqual({ ok: true });
+  });
+
+  it('실패 상태가 SecureStore에 저장돼 앱을 다시 켜도 대기가 이어진다', async () => {
+    await setPin('123456');
+    for (let i = 0; i < 5; i++) await verifyPin('000000', 0);
+    expect(mockStore.get(PIN_LOCK_KEY)).toBeDefined();
+    expect(await verifyPin('123456', 1000)).toMatchObject({ ok: false, reason: 'locked' });
+    expect(await verifyPin('123456', LOCKOUT_MS)).toEqual({ ok: true });
+    expect(mockStore.has(PIN_LOCK_KEY)).toBe(false);
   });
 
   it('성공하면 실패 횟수가 초기화된다', async () => {

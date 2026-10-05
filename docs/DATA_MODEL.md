@@ -275,6 +275,7 @@ RLS: 본인 기기 행만 읽을 수 있다. 쓰기는 그 요청의 `approver_d
 |---|---|
 | `db.key` | SQLCipher 키 |
 | `pin.hash` | PIN 해시(Argon2id `crypto_pwhash` + salt) |
+| `pin.lock` | PIN 실패 상태 JSON `{failures, lockedUntil}`. 5회 실패 시 30초 대기를 앱 재시작 뒤에도 유지(기기 시계 기준) |
 | `device.id`, `device.sk` | 기기 ID, X25519 개인키 |
 | `space.{space_id}.key.{key_id}` | 공간 키(32바이트) |
 | `secure.index` | 이 앱이 SecureStore에 쓴 키 이름 목록(JSON). SecureStore는 키 목록을 주지 않아 재설치 정리 때 동적 키까지 지우려고 둔다 |
