@@ -277,6 +277,7 @@ RLS: 본인 기기 행만 읽을 수 있다. 쓰기는 그 요청의 `approver_d
 | `pin.hash` | PIN 해시(Argon2id `crypto_pwhash` + salt) |
 | `device.id`, `device.sk` | 기기 ID, X25519 개인키 |
 | `space.{space_id}.key.{key_id}` | 공간 키(32바이트) |
+| `secure.index` | 이 앱이 SecureStore에 쓴 키 이름 목록(JSON). SecureStore는 키 목록을 주지 않아 재설치 정리 때 동적 키까지 지우려고 둔다 |
 
 - 접근성: `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`(iOS). 화면이 잠긴 동안에도 백그라운드 백업이 DB를 열 수 있고, 기기 밖으로 복사되지 않는다.
 - 재설치 정리: 시작 시 `kv['install.id']`가 없으면(새 설치) SecureStore 항목을 모두 지우고 새 기기로 시작한다. iOS는 앱을 지워도 키체인이 남기 때문이다.
