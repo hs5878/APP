@@ -34,7 +34,9 @@ export function SettingItem({
     >
       <View style={styles.content}>
         <Text style={[styles.label, { color: labelColor }]}>{label}</Text>
-        {description && <Text style={[styles.description, { color: descColor }]}>{description}</Text>}
+        {description && (
+          <Text style={[styles.description, { color: descColor }]}>{description}</Text>
+        )}
       </View>
       {rightElement}
     </Pressable>
@@ -54,9 +56,7 @@ export function ToggleSetting({ value, onValueChange, onPress, ...rest }: Toggle
         onPress?.();
         onValueChange(!value);
       }}
-      rightElement={
-        <Switch value={value} onValueChange={onValueChange} disabled={rest.disabled} />
-      }
+      rightElement={<Switch value={value} onValueChange={onValueChange} disabled={rest.disabled} />}
     />
   );
 }

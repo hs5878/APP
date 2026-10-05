@@ -1,8 +1,13 @@
 import { ScrollView, StyleSheet, useColorScheme } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useSpace } from '@/features/space/SpaceProvider';
 import { useLock } from '@/features/lock/LockProvider';
 import { saveLockSettings } from '@/features/lock/settings';
-import { saveNotificationSettings, type NotificationSettings } from '@/features/notifications/settings';
+import {
+  saveNotificationSettings,
+  type NotificationSettings,
+} from '@/features/notifications/settings';
 import { getDb } from '@/db/client';
 import { SettingSection } from '@/components/SettingSection';
 import { ToggleSetting, ButtonSetting } from '@/components/SettingItem';
@@ -10,6 +15,8 @@ import { ToggleSetting, ButtonSetting } from '@/components/SettingItem';
 export default function SettingsScreen() {
   const dark = useColorScheme() === 'dark';
   const lock = useLock();
+  const router = useRouter();
+  const { space } = useSpace();
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
     hideContent: false,
     anniversaryEnabled: true,
@@ -147,10 +154,9 @@ export default function SettingsScreen() {
       <SettingSection title="연결">
         <ButtonSetting
           label="사귄 날"
-          description="준비 중입니다"
+          description={space?.startedOn}
           buttonText="수정"
-          onPress={() => {}}
-          disabled={true}
+          onPress={() => router.push('/settings/started-on')}
         />
         <ButtonSetting
           label="내 별명"
