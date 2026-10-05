@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { getRandomBytes } from 'expo-crypto';
-import { openDatabaseAsync } from 'expo-sqlite';
+import { deleteDatabaseAsync, openDatabaseAsync } from 'expo-sqlite';
 import { getSecret, setSecret } from '@/platform/secureStore';
 import { runMigrations } from './migrate';
 
@@ -41,11 +41,23 @@ export async function openEncryptedDb(key: string) {
 }
 
 let opening: ReturnType<typeof initDb> | null = null;
+let current: Awaited<ReturnType<typeof openEncryptedDb>> | null = null;
 
 async function initDb() {
   const sqlite = await openEncryptedDb(await getOrCreateDbKey());
+  current = sqlite;
   await runMigrations(sqlite);
   return drizzle(sqlite);
+}
+
+/** 연결을 닫고 DB 파일을 지운다. 다음 getDb()가 새 파일을 만든다. 재설치 정리용. */
+export async function resetDb(): Promise<void> {
+  const pending = opening;
+  opening = null;
+  await pending?.catch(() => {});
+  await current?.closeAsync().catch(() => {});
+  current = null;
+  await deleteDatabaseAsync(DB_NAME).catch(() => {});
 }
 
 /** 앱 전체에서 공유하는 DB. 처음 호출할 때 열고 마이그레이션한다. 실패하면 다음 호출에서 다시 시도한다. */

@@ -9,6 +9,10 @@ module.exports = defineConfig([
     ignores: ['dist/*', '.expo/*', 'ios/*', 'android/*', 'node_modules/*'],
   },
   {
+    files: ['plugins/**/*.test.js'],
+    languageOptions: { globals: { describe: 'readonly', it: 'readonly', expect: 'readonly' } },
+  },
+  {
     // 순수 함수 폴더 보호: 플랫폼·DB 의존 import 금지
     files: ['src/domain/**/*.{ts,tsx}'],
     rules: {

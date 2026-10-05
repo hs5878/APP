@@ -21,6 +21,7 @@ const config: ExpoConfig = {
     'expo-dev-client',
     ['expo-sqlite', { useSQLCipher: true }],
     'expo-secure-store',
+    './plugins/withNoBackup',
     [
       'expo-build-properties',
       {
