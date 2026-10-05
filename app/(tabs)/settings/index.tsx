@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, useColorScheme } from 'react-native';
+import { Alert, ScrollView, StyleSheet, useColorScheme } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useSpace } from '@/features/space/SpaceProvider';
@@ -54,6 +54,18 @@ export default function SettingsScreen() {
       await rescheduleNotifications();
     } catch (e) {
       console.error('Failed to save notification settings:', e);
+    }
+  };
+
+  // 개발 빌드 전용: T18 암·복호화 실측(docs/MEASUREMENTS.md).
+  const runCryptoBenchmark = async () => {
+    try {
+      const { benchmarkPhotoCipher, formatBenchResult } = await import('@/crypto/benchmark');
+      const text = formatBenchResult(await benchmarkPhotoCipher());
+      console.log(`[T18]\n${text}`);
+      Alert.alert('암호 측정', text);
+    } catch (e) {
+      Alert.alert('측정 실패', String(e));
     }
   };
 
@@ -213,6 +225,17 @@ export default function SettingsScreen() {
           disabled={true}
         />
       </SettingSection>
+
+      {__DEV__ && (
+        <SettingSection title="개발">
+          <ButtonSetting
+            label="암호 측정"
+            description="0.5MB 보관본 암·복호화 시간"
+            buttonText="측정"
+            onPress={runCryptoBenchmark}
+          />
+        </SettingSection>
+      )}
     </ScrollView>
   );
 }

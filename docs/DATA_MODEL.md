@@ -276,7 +276,7 @@ RLS: 본인 기기 행만 읽을 수 있다. 쓰기는 그 요청의 `approver_d
 | `db.key` | SQLCipher 키 |
 | `pin.hash` | PIN 해시(Argon2id `crypto_pwhash` + salt) |
 | `pin.lock` | PIN 실패 상태 JSON `{failures, lockedUntil}`. 5회 실패 시 30초 대기를 앱 재시작 뒤에도 유지(기기 시계 기준) |
-| `device.id`, `device.sk` | 기기 ID, X25519 개인키 |
+| `device.id`, `device.sk` | 기기 ID, X25519 키쌍. `device.sk` 값 = base64(개인키 32B ‖ 공개키 32B). 네이티브 libsodium에 개인키로 공개키를 계산하는 함수가 없어 공개키를 함께 둔다 |
 | `space.{space_id}.key.{key_id}` | 공간 키(32바이트) |
 | `secure.index` | 이 앱이 SecureStore에 쓴 키 이름 목록(JSON). SecureStore는 키 목록을 주지 않아 재설치 정리 때 동적 키까지 지우려고 둔다 |
 
@@ -332,6 +332,7 @@ S 테이블의 서버 스키마는 모두 같은 모양이다.
 예외: `spaces`는 평문 `status`, `unlinked_at`을 더 가진다(서버 함수만 씀). `photos`는 평문 `remote_path`를 더 가진다(서버가 서명 URL을 만들어야 함, 경로에는 ID만 들어감).
 
 - **행 AAD**: 길이 접두 인코딩(각 필드 앞에 2바이트 길이)으로 `테이블명, id, space_id, parent_id(없으면 빈 값), created_by, key_id`. 서버가 payload를 다른 행으로 옮기거나, 사진을 다른 카드로 옮기거나, 작성자를 바꾸면 복호화가 실패한다. 사진을 다른 카드로 옮길 때는 클라이언트가 payload를 다시 암호화한다.
+- **AAD 문자 제한**: react-native-libsodium 네이티브 바인딩은 AAD를 문자열(UTF-8)로만 받는다. 바이트가 그대로 유지되도록 AAD 필드는 출력 가능한 ASCII, 필드당 127바이트 이하로 제한한다(길이 접두 2바이트도 ASCII 범위에 든다). key_id는 10진 문자열로 넣는다. 사진 AAD는 길이 접두가 없으므로 photo_id·space_id를 36자 UUID로 고정한다.
 - **사진 파일**: 단발 AEAD(`crypto_aead_xchacha20poly1305_ietf_encrypt`). 파일 = `nonce(24B) ‖ ciphertext`. AAD = `"photo" ‖ photo_id ‖ space_id ‖ key_id ‖ "full" 또는 "thumb"`. 보관본이 약 0.5MB라 스트리밍이 필요 없다.
 - **파일 I/O**: base64를 거치지 않고 `Uint8Array`로 바로 읽고 쓴다(expo-file-system `File` API). 100ms 목표는 M4 첫 작업에서 측정한다.
 - **한계(고지)**: 서버는 행을 지우거나 예전 암호문으로 되돌릴 수 있다. MVP에서는 막지 않는다.
