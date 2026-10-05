@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -22,6 +22,7 @@ const PAD = 16;
 
 export default function CardDetailScreen() {
   const { cardId } = useLocalSearchParams<{ cardId: string }>();
+  const router = useRouter();
   const detail = useCardDetail(cardId);
   const [viewer, setViewer] = useState<number | null>(null);
   const { width } = useWindowDimensions();
@@ -50,7 +51,19 @@ export default function CardDetailScreen() {
 
   return (
     <ScrollView style={{ backgroundColor: bg }} contentContainerStyle={styles.content}>
-      <Stack.Screen options={{ title: formatCardDate(card.date) }} />
+      <Stack.Screen
+        options={{
+          title: formatCardDate(card.date),
+          headerRight: () => (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push(`/records/${card.id}/edit` as Href)}
+            >
+              <Text style={styles.edit}>편집</Text>
+            </Pressable>
+          ),
+        }}
+      />
 
       <Text style={[styles.summary, { color: fg }]}>{card.summary || '요약 없음'}</Text>
 
@@ -111,6 +124,7 @@ export default function CardDetailScreen() {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: PAD, gap: 24 },
+  edit: { color: '#e0457b', fontSize: 16, fontWeight: '700' },
   summary: { fontSize: 20, fontWeight: '800', lineHeight: 28 },
   section: { gap: 10 },
   heading: { fontSize: 15, fontWeight: '700' },

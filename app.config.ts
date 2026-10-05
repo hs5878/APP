@@ -34,6 +34,14 @@ const config: ExpoConfig = {
       },
     ],
     'react-native-libsodium',
+    [
+      'expo-image-picker',
+      {
+        photosPermission: '카드에 사진을 더하려고 갤러리에서 사진을 고릅니다.',
+        cameraPermission: false,
+        microphonePermission: false,
+      },
+    ],
     './plugins/withNoBackup',
     [
       'expo-build-properties',

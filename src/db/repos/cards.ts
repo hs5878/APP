@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull, max, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { CandidateDraft, CardWindow } from '@/domain/candidatePlan';
-import { cardCandidates, dateCards, photos, placeStops } from '../schema';
+import { cardCandidates, cardNotes, dateCards, photos, placeStops } from '../schema';
 
 type Db = BaseSQLiteDatabase<'async' | 'sync', unknown, Record<string, never>>;
 export type CandidateRow = typeof cardCandidates.$inferSelect;
@@ -336,4 +336,150 @@ export async function listCardPhotos(db: Db, cardId: string): Promise<PhotoRow[]
     .from(photos)
     .where(and(eq(photos.cardId, cardId), isNull(photos.deletedAt)))
     .orderBy(asc(photos.sort), asc(photos.takenAt));
+}
+
+// ── 카드 편집(S) ───────────────────────────────────────────────
+// 편집은 모두 updatedAt을 올리고 dirty = 1로 둔다. 삭제는 deletedAt만 채우는 소프트 삭제다(§5.1: 삭제 고정).
+
+const touched = (now: number) => ({ updatedAt: now, dirty: 1 });
+
+export async function getPhoto(db: Db, id: string): Promise<PhotoRow | null> {
+  const rows = await db
+    .select()
+    .from(photos)
+    .where(and(eq(photos.id, id), isNull(photos.deletedAt)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** 사진 없이 직접 만드는 카드. 시간대는 null, 요약은 비워 둔다. */
+export async function insertManualCard(
+  db: Db,
+  input: Owner & { id: string; date: string },
+): Promise<void> {
+  await db.insert(dateCards).values({
+    id: input.id,
+    date: input.date,
+    startAt: null,
+    endAt: null,
+    summary: '',
+    summarySource: 'manual',
+    coverPhotoId: null,
+    spaceId: input.spaceId,
+    createdBy: input.userId,
+    createdAt: input.now,
+    updatedAt: input.now,
+    dirty: 1,
+  });
+}
+
+export async function updateCardDate(db: Db, id: string, date: string, now: number): Promise<void> {
+  await db
+    .update(dateCards)
+    .set({ date, ...touched(now) })
+    .where(and(eq(dateCards.id, id), isNull(dateCards.deletedAt)));
+}
+
+/** 표지 사진을 정한다. null이면 지정을 풀어 카드 안 첫 사진이 표지가 된다. */
+export async function setCardCover(
+  db: Db,
+  id: string,
+  photoId: string | null,
+  now: number,
+): Promise<void> {
+  await db
+    .update(dateCards)
+    .set({ coverPhotoId: photoId, ...touched(now) })
+    .where(and(eq(dateCards.id, id), isNull(dateCards.deletedAt)));
+}
+
+export async function updateCardSummary(
+  db: Db,
+  id: string,
+  summary: string,
+  now: number,
+): Promise<void> {
+  await db
+    .update(dateCards)
+    .set({ summary, ...touched(now) })
+    .where(and(eq(dateCards.id, id), isNull(dateCards.deletedAt)));
+}
+
+/** 카드와 그 안의 사진·장소 스톱·한 줄 메모를 소프트 삭제한다. 트랜잭션 안에서 부른다. */
+export async function softDeleteCard(db: Db, id: string, now: number): Promise<void> {
+  const patch = { deletedAt: now, ...touched(now) };
+  await db
+    .update(dateCards)
+    .set(patch)
+    .where(and(eq(dateCards.id, id), isNull(dateCards.deletedAt)));
+  await db
+    .update(photos)
+    .set(patch)
+    .where(and(eq(photos.cardId, id), isNull(photos.deletedAt)));
+  await db
+    .update(placeStops)
+    .set(patch)
+    .where(and(eq(placeStops.cardId, id), isNull(placeStops.deletedAt)));
+  await db
+    .update(cardNotes)
+    .set(patch)
+    .where(and(eq(cardNotes.cardId, id), isNull(cardNotes.deletedAt)));
+}
+
+export async function softDeletePhotos(db: Db, ids: readonly string[], now: number): Promise<void> {
+  if (ids.length === 0) return;
+  await db
+    .update(photos)
+    .set({ deletedAt: now, ...touched(now) })
+    .where(and(inArray(photos.id, [...ids]), isNull(photos.deletedAt)));
+}
+
+/**
+ * 사진을 다른 카드로 옮겨 그 카드 사진 순서의 끝에 붙인다(`ids` 순서대로).
+ * 장소 스톱은 카드에 속하므로 연결을 푼다. 원래 카드의 순서는 `resortPhotos`로 다시 매긴다.
+ */
+export async function movePhotos(
+  db: Db,
+  ids: readonly string[],
+  toCardId: string,
+  now: number,
+): Promise<void> {
+  let sort = (await maxPhotoSort(db, toCardId)) + 1;
+  for (const id of ids) {
+    await db
+      .update(photos)
+      .set({ cardId: toCardId, sort: sort++, placeStopId: null, ...touched(now) })
+      .where(and(eq(photos.id, id), isNull(photos.deletedAt)));
+  }
+}
+
+/** 카드 안 사진 `sort`를 현재 순서대로 0부터 이어 붙인다. 바뀐 행만 dirty로 올린다. */
+export async function resortPhotos(db: Db, cardId: string, now: number): Promise<void> {
+  const list = await listCardPhotos(db, cardId);
+  for (let i = 0; i < list.length; i++) {
+    const p = list[i]!;
+    if (p.sort === i) continue;
+    await db
+      .update(photos)
+      .set({ sort: i, ...touched(now) })
+      .where(eq(photos.id, p.id));
+  }
+}
+
+/** 사진의 첫·마지막 촬영 시각으로 카드 시간대를 맞춘다. 사진이 없으면 그대로 둔다. */
+export async function refreshCardSpan(db: Db, cardId: string, now: number): Promise<void> {
+  const rows = await db
+    .select({
+      lo: sql<number | null>`min(${photos.takenAt})`,
+      hi: sql<number | null>`max(${photos.takenAt})`,
+    })
+    .from(photos)
+    .where(and(eq(photos.cardId, cardId), isNull(photos.deletedAt)));
+  const lo = rows[0]?.lo;
+  const hi = rows[0]?.hi;
+  if (lo == null || hi == null) return;
+  await db
+    .update(dateCards)
+    .set({ startAt: Number(lo), endAt: Number(hi), ...touched(now) })
+    .where(and(eq(dateCards.id, cardId), isNull(dateCards.deletedAt)));
 }

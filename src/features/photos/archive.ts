@@ -19,11 +19,23 @@ export async function archivePhoto(
   assetId: string,
   photoId: string,
 ): Promise<ArchivedPhoto | null> {
-  const created: string[] = [];
   try {
     const source = await files.resolveAssetUri(assetId);
-    if (!source) return null;
-    const image = await files.openImage(source);
+    return source ? await archiveUri(files, source, photoId) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 읽을 수 있는 이미지 파일 위치에서 보관본과 썸네일을 만든다. 선택기가 준 파일에 쓴다. 실패하면 null. */
+export async function archiveUri(
+  files: PhotoFilesApi,
+  uri: string,
+  photoId: string,
+): Promise<ArchivedPhoto | null> {
+  const created: string[] = [];
+  try {
+    const image = await files.openImage(uri);
 
     const full = await image.saveJpeg(ARCHIVE_MAX_EDGE, ARCHIVE_JPEG_QUALITY);
     const localPath = await files.store(full.uri, 'archive', photoId);
@@ -35,7 +47,7 @@ export async function archivePhoto(
 
     return { localPath, width: full.width, height: full.height, thumbPath };
   } catch {
-    await Promise.all(created.map((uri) => files.remove(uri)));
+    await Promise.all(created.map((p) => files.remove(p)));
     return null;
   }
 }
