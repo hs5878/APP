@@ -296,3 +296,44 @@ export async function updateCardAfterAppend(
     })
     .where(and(eq(dateCards.id, id), isNull(dateCards.deletedAt)));
 }
+
+// ── 기록 탭(읽기) ──────────────────────────────────────────────
+
+export type TimelineRow = {
+  id: string;
+  date: string;
+  startAt: number | null;
+  summary: string;
+  photoCount: number;
+  /** 표지로 보여 줄 사진 id. 표지 지정이 없거나 지워졌으면 카드 안 첫 사진. 사진이 없으면 null. */
+  coverId: string | null;
+};
+
+/** 삭제되지 않은 카드 전부와 사진 수·표지. 사진 수와 표지는 하위 쿼리로 한 번에 읽는다(카드마다 따로 묻지 않는다). */
+export async function listTimelineCards(db: Db, spaceId: string): Promise<TimelineRow[]> {
+  const rows = await db
+    .select({
+      id: dateCards.id,
+      date: dateCards.date,
+      startAt: dateCards.startAt,
+      summary: dateCards.summary,
+      photoCount: sql<number>`(select count(*) from photos p where p.card_id = date_cards.id and p.deleted_at is null)`,
+      coverId: sql<
+        string | null
+      >`coalesce((select p.id from photos p where p.id = date_cards.cover_photo_id and p.card_id = date_cards.id and p.deleted_at is null), (select p.id from photos p where p.card_id = date_cards.id and p.deleted_at is null order by p.sort asc, p.taken_at asc limit 1))`,
+    })
+    .from(dateCards)
+    .where(and(eq(dateCards.spaceId, spaceId), isNull(dateCards.deletedAt)));
+  return rows.map((r) => ({ ...r, photoCount: Number(r.photoCount) }));
+}
+
+export type PhotoRow = typeof photos.$inferSelect;
+
+/** 카드 안 사진, 카드 안 순서대로. */
+export async function listCardPhotos(db: Db, cardId: string): Promise<PhotoRow[]> {
+  return db
+    .select()
+    .from(photos)
+    .where(and(eq(photos.cardId, cardId), isNull(photos.deletedAt)))
+    .orderBy(asc(photos.sort), asc(photos.takenAt));
+}

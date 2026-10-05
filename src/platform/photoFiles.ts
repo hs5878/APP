@@ -83,3 +83,8 @@ export const photoFilesApi: PhotoFilesApi = {
     }
   },
 };
+
+/** 썸네일 파일 위치(`cache/thumbs/{id}.jpg`). 캐시라 지워졌을 수 있다. */
+export function thumbUri(photoId: string): string {
+  return targetFor('thumb', photoId).file.uri;
+}
