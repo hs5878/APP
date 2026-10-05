@@ -11,6 +11,7 @@ import { getDb } from '@/db/client';
 import { createLocalSpace, getLocalSpace, updateStartedOn, type SpaceRow } from '@/db/repos/spaces';
 import { getDevUser } from '@/features/devUser';
 import { useLock } from '@/features/lock/LockProvider';
+import { rescheduleNotifications } from '@/features/notifications/reschedule';
 import { saveNotificationSettings } from '@/features/notifications/settings';
 
 interface SpaceContextValue {
@@ -51,6 +52,13 @@ export function SpaceProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [ready]);
+
+  // 앱 실행, 온보딩 완료, 사귄 날 변경 때 알림을 다시 건다.
+  const spaceId = space?.id;
+  const startedOn = space?.startedOn;
+  useEffect(() => {
+    if (spaceId && startedOn) void rescheduleNotifications();
+  }, [spaceId, startedOn]);
 
   const completeOnboarding = useCallback<SpaceContextValue['completeOnboarding']>(
     async ({ startedOn, hideNotifications }) => {

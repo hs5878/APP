@@ -11,6 +11,7 @@ import {
 } from '@/db/repos/anniversaries';
 import { uuidv7 } from '@/domain/id';
 import { getDevUser } from '@/features/devUser';
+import { rescheduleNotifications } from '@/features/notifications/reschedule';
 import { useSpace } from '@/features/space/SpaceProvider';
 
 /** 화면이 포커스를 얻을 때마다 다시 읽는다. 편집 화면에서 돌아오면 목록·홈이 갱신된다. */
@@ -47,12 +48,15 @@ export function useAnniversaryActions() {
         userId,
         now: Date.now(),
       });
+      await rescheduleNotifications();
     },
     async update(id: string, input: AnniversaryInput) {
       await updateAnniversary(await getDb(), id, input, Date.now());
+      await rescheduleNotifications();
     },
     async remove(id: string) {
       await deleteAnniversary(await getDb(), id, Date.now());
+      await rescheduleNotifications();
     },
   };
 }

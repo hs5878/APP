@@ -9,6 +9,7 @@ import {
   type NotificationSettings,
 } from '@/features/notifications/settings';
 import { getDb } from '@/db/client';
+import { rescheduleNotifications } from '@/features/notifications/reschedule';
 import { SettingSection } from '@/components/SettingSection';
 import { ToggleSetting, ButtonSetting } from '@/components/SettingItem';
 
@@ -45,16 +46,20 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleNotifHideToggle = async (value: boolean) => {
-    const next = { ...notifSettings, hideContent: value };
-    setNotifSettings(next);
+  const updateNotifSettings = async (patch: Partial<NotificationSettings>) => {
+    setNotifSettings({ ...notifSettings, ...patch });
     try {
       const db = await getDb();
-      await saveNotificationSettings(db, { hideContent: value });
+      await saveNotificationSettings(db, patch);
+      await rescheduleNotifications();
     } catch (e) {
       console.error('Failed to save notification settings:', e);
     }
   };
+
+  const handleNotifHideToggle = (value: boolean) => updateNotifSettings({ hideContent: value });
+  const handleAnniversaryNotifToggle = (value: boolean) =>
+    updateNotifSettings({ anniversaryEnabled: value });
 
   return (
     <ScrollView
@@ -91,8 +96,7 @@ export default function SettingsScreen() {
           label="기념일 알림"
           description="기념일 당일 09:00에 알림을 받습니다"
           value={notifSettings.anniversaryEnabled}
-          onValueChange={() => {}}
-          disabled={true}
+          onValueChange={handleAnniversaryNotifToggle}
         />
       </SettingSection>
 

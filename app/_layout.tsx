@@ -2,6 +2,9 @@ import { Stack } from 'expo-router';
 import { PrivacyCover } from '@/components/PrivacyCover';
 import { LockProvider, useLock } from '@/features/lock/LockProvider';
 import { SpaceProvider, useSpace } from '@/features/space/SpaceProvider';
+import { configureNotificationHandler } from '@/platform/notifications';
+
+configureNotificationHandler();
 
 function RootStack() {
   const { ready, locked, covered } = useLock();

@@ -21,6 +21,7 @@ const config: ExpoConfig = {
     'expo-dev-client',
     ['expo-sqlite', { useSQLCipher: true }],
     'expo-secure-store',
+    'expo-notifications',
     ['expo-local-authentication', { faceIDPermission: 'Face ID로 앱 잠금을 풉니다.' }],
     'react-native-libsodium',
     './plugins/withNoBackup',
