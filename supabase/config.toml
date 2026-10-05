@@ -1,0 +1,46 @@
+# Supabase CLI 로컬 설정. `supabase start`로 띄우고 `supabase test db`로 supabase/tests/database/*.sql(pgTAP)을 돌린다.
+# 스키마는 supabase/migrations가 기준이다(Storage 버킷 `photos`도 마이그레이션이 만든다).
+# 로그인 공급자(카카오·Apple)는 T20에서 추가한다.
+project_id = "loverecord"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.migrations]
+enabled = true
+
+[db.seed]
+enabled = false
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+[auth]
+enabled = true
+site_url = "loverecord://"
+additional_redirect_urls = ["loverecord://**"]
+jwt_expiry = 3600
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+
+[functions.create-space]
+verify_jwt = true

@@ -9,6 +9,11 @@ module.exports = defineConfig([
     ignores: ['dist/*', '.expo/*', 'ios/*', 'android/*', 'node_modules/*'],
   },
   {
+    // Edge Functions는 Deno가 npm:·jsr: 지정자를 직접 푼다.
+    files: ['supabase/functions/**/*.ts'],
+    rules: { 'import/no-unresolved': 'off' },
+  },
+  {
     files: ['plugins/**/*.test.js'],
     languageOptions: { globals: { describe: 'readonly', it: 'readonly', expect: 'readonly' } },
   },

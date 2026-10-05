@@ -8,5 +8,7 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  // Edge Functions는 Deno 런타임(npm:·Deno 전역)이라 앱 tsc에서 뺀다.
+  "exclude": ["node_modules", "supabase/functions"]
 }
