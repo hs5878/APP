@@ -13,7 +13,7 @@ describe('runMigrations', () => {
 
   it('두 번 실행해도 안전하고 두 번째는 아무것도 적용하지 않는다', async () => {
     const { runner } = createTestDb();
-    expect(await runMigrations(runner)).toEqual(['0001_kv']);
+    expect(await runMigrations(runner)).toEqual(['0001_kv', '0002_schema']);
     expect(await runMigrations(runner)).toEqual([]);
   });
 
