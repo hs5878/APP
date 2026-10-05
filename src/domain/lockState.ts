@@ -31,3 +31,29 @@ export function recordFailure(state: LockState, now: number): LockState {
 export function recordSuccess(): LockState {
   return initialLockState;
 }
+
+/** 백그라운드에서 돌아왔을 때 잠그는 기준(초). DATA_MODEL `lock.timeout`. 0은 즉시. */
+export const LOCK_TIMEOUTS_SEC = [0, 60, 300] as const;
+export type LockTimeoutSec = (typeof LOCK_TIMEOUTS_SEC)[number];
+export const DEFAULT_LOCK_TIMEOUT_SEC: LockTimeoutSec = 0;
+
+/** 저장된 문자열을 옵션 값으로. 없거나 모르는 값이면 가장 엄격한 즉시(0). */
+export function parseLockTimeout(raw: string | null): LockTimeoutSec {
+  const n = raw === null ? NaN : Number(raw);
+  return LOCK_TIMEOUTS_SEC.find((t) => t === n) ?? DEFAULT_LOCK_TIMEOUT_SEC;
+}
+
+export interface ResumeCheck {
+  enabled: boolean;
+  timeoutSec: LockTimeoutSec;
+  /** 앱이 백그라운드로 간 시각(ms). 기록이 없으면 null. */
+  leftAt: number | null;
+  now: number;
+}
+
+/** 앱이 다시 앞으로 왔을 때 잠금 화면을 보여야 하는가. 시계가 되돌려졌으면(경과가 음수) 잠근다. */
+export function shouldLockOnResume({ enabled, timeoutSec, leftAt, now }: ResumeCheck): boolean {
+  if (!enabled || leftAt === null) return false;
+  const elapsedMs = now - leftAt;
+  return elapsedMs < 0 || elapsedMs >= timeoutSec * 1000;
+}

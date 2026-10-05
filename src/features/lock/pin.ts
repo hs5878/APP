@@ -13,7 +13,8 @@ import { deleteSecret, getSecret, setSecret } from '@/platform/secureStore';
 // PIN은 DB 키와 무관하다(D-011). 이 파일은 SecureStore의 `pin.hash`만 읽고 쓴다.
 export const PIN_HASH_KEY = 'pin.hash';
 
-const PIN_PATTERN = /^\d{6}$/;
+export const PIN_LENGTH = 6;
+const PIN_PATTERN = new RegExp(`^\\d{${PIN_LENGTH}}$`);
 const HASH_BYTES = 32;
 const FORMAT = 'argon2id13';
 
