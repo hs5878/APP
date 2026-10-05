@@ -23,6 +23,16 @@ const config: ExpoConfig = {
     'expo-secure-store',
     'expo-notifications',
     ['expo-local-authentication', { faceIDPermission: 'Face ID로 앱 잠금을 풉니다.' }],
+    [
+      'expo-media-library',
+      {
+        photosPermission:
+          '같은 날 찍은 사진을 데이트 기록 후보로 묶으려고 사진의 촬영 시각과 위치를 읽습니다.',
+        savePhotosPermission: false,
+        isAccessMediaLocationEnabled: true,
+        granularPermissions: ['photo'],
+      },
+    ],
     'react-native-libsodium',
     './plugins/withNoBackup',
     [
